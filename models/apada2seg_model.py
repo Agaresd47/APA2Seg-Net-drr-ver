@@ -517,35 +517,54 @@ class APADA2SEGModel_TEST(BaseModel):
         assert(not opt.isTrain)
         BaseModel.initialize(self, opt)
         self.input_B = self.Tensor(opt.batchSize, opt.input_nc, opt.fineSize, opt.fineSize)
-
+        # Initialize segmentation tensor but don't require it
+        self.input_B_seg = None
+        
         self.netS_B = networks.define_S(opt.input_nc_seg, opt.output_nc_seg,
-                                        opt.ngf, opt.which_model_netS, opt.norm, not opt.no_dropout, self.gpu_ids)
+                                      opt.ngf, opt.which_model_netS, opt.norm, 
+                                      not opt.no_dropout, self.gpu_ids)
 
         which_epoch_S = opt.which_epoch_S
         self.load_network(self.netS_B, 'S_B', which_epoch_S)
 
-        print('---------- Networks initialized -------------')
-        networks.print_network(self.netS_B)
-        print('-----------------------------------------------')
-
     def set_input(self, input):
-        # we need to use single_dataset mode
+        # Always load the image
         input_B = input['B']
         self.input_B.resize_(input_B.size()).copy_(input_B)
         self.image_paths = input['B_paths']
-        self.input_B_seg = input['Seg']
+        
+        # Only set segmentation if it exists and is valid
+        if 'Seg' in input and input['Seg'] is not None:
+            if not torch.all(input['Seg'] == 0):  # Check if mask is not empty
+                self.input_B_seg = input['Seg']
+            else:
+                self.input_B_seg = None
+        else:
+            self.input_B_seg = None
 
     def test(self):
+        # Always run the model
         self.real_B = Variable(self.input_B)
         self.real_B_seg = self.netS_B.forward(self.real_B)
-        self.gt_real_B_seg = self.input_B_seg
-
-    # get image paths
-    def get_image_paths(self):
-        return self.image_paths
+        
+        # Only set ground truth if available
+        if self.input_B_seg is not None:
+            self.gt_real_B_seg = self.input_B_seg
+        else:
+            self.gt_real_B_seg = None
 
     def get_current_visuals(self):
-        real_B = util.tensor2im(self.real_B.data)
-        real_B_seg = util.tensor2seg(torch.max(self.real_B_seg.data, dim=1, keepdim=True)[1])
-        gt_real_B_seg = util.tensor2seg(torch.max(self.gt_real_B_seg.data, dim=1, keepdim=True)[1])
-        return OrderedDict([('real_B', real_B), ('real_B_seg', real_B_seg), ('gt_real_B_seg', gt_real_B_seg)])
+        visuals = OrderedDict()
+        
+        # Always include input image and predicted segmentation
+        visuals['real_B'] = util.tensor2im(self.real_B.data)
+        visuals['real_B_seg'] = util.tensor2seg(torch.max(self.real_B_seg.data, dim=1, keepdim=True)[1])
+        
+        # Only include ground truth if available
+        if self.gt_real_B_seg is not None:
+            visuals['gt_real_B_seg'] = util.tensor2seg(torch.max(self.gt_real_B_seg.data, dim=1, keepdim=True)[1])
+        
+        return visuals
+
+    def get_image_paths(self):
+        return self.image_paths

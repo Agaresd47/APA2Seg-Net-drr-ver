@@ -208,16 +208,15 @@ class Visualizer():
     def save_seg_images_to_dir(self, image_dir, visuals, image_path):
         short_path = ntpath.basename(image_path[0])
         name = os.path.splitext(short_path)[0]
-        full_path_strs = image_path[0].split('/')
-
-        save_dir = os.path.join(image_dir, full_path_strs[-3], full_path_strs[-2])
-        self.mkdir(save_dir)
-
-        for label in visuals:
-            print(label)
-            image_numpy = visuals[label]
-            image_name = '%s_%s.png' % (name, label)
-            save_path = os.path.join(save_dir, image_name)
-            if not os.path.exists(save_path):
+        
+        # Create directory if it doesn't exist
+        self.mkdir(image_dir)
+        
+        # Always save original image and prediction
+        for label in ['real_B', 'real_B_seg']:
+            if label in visuals:
+                image_numpy = visuals[label]
+                image_name = '%s_%s.png' % (name, label)
+                save_path = os.path.join(image_dir, image_name)
                 util.save_image(image_numpy, save_path)
 

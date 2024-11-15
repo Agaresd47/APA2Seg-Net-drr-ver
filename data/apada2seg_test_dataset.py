@@ -65,19 +65,21 @@ class TestDataset(BaseDataset):
         B_img = self.transforms_toTensor(B_img)
         B_img = self.transforms_normalize(B_img)
 
-        Seg_filename = self.B_filenames[index % self.B_size]
-        Seg_path = os.path.join(self.dir_B, Seg_filename)
-        Seg_path = Seg_path.replace('.png', '_mask.png')
-        Seg_img = Image.open(Seg_path).convert('I')
-        Seg_img = self.transforms_toTensor(Seg_img)
-        Seg_img[Seg_img > 0] = 1
-
-        Seg_imgs = torch.Tensor(self.opt.output_nc_seg, self.opt.fineSize, self.opt.fineSize)
-        Seg_imgs[0, :, :] = Seg_img == 0
-        Seg_imgs[1, :, :] = Seg_img == 1
+        base_name, ext = os.path.splitext(B_path)
+        Seg_path = f"{base_name}_mask{ext}"
+        
+        Seg_imgs = torch.zeros(self.opt.output_nc_seg, self.opt.fineSize, self.opt.fineSize)
+        
+        if os.path.exists(Seg_path):
+            Seg_img = Image.open(Seg_path).convert('I')
+            Seg_img = self.transforms_toTensor(Seg_img)
+            Seg_img[Seg_img > 0] = 1
+            
+            Seg_imgs[0, :, :] = Seg_img == 0
+            Seg_imgs[1, :, :] = Seg_img == 1
 
         return {'B': B_img, 'Seg': Seg_imgs,
-                'B_paths': B_path, 'Seg_paths': Seg_path}
+                'B_paths': B_path, 'Seg_paths': Seg_path if os.path.exists(Seg_path) else None}
 
     def __len__(self):
         return self.B_size

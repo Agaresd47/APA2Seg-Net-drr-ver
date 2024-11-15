@@ -66,9 +66,13 @@ class TrainDataset(BaseDataset):
     def __getitem__(self, index):
         index_A = index % self.A_size
         A_path = os.path.join(self.dir_A, self.A_paths[index_A])
-        Seg_path = os.path.join(self.dir_A, self.A_paths[index_A])
-        Seg_path = Seg_path.replace('.png', '_mask.png')
-
+        
+        # New adaptive mask path generation
+        base_name, ext = os.path.splitext(A_path)
+        Seg_path = f"{base_name}_mask{ext}"
+        # or alternatively:
+        # Seg_path = base_name + "_mask" + ext
+        
         index_B = random.randint(0, self.B_size - 1)
         B_path = os.path.join(self.dir_B, self.B_paths[index_B])
 

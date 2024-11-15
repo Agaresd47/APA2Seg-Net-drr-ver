@@ -87,15 +87,16 @@ if TrainOrTest == 'Train':
             model.update_learning_rate()
 
 if TrainOrTest == 'TestSeg':
-    opt.nThreads = 1  # test code only supports nThreads = 1
-    opt.batchSize = 1  # test code only supports batchSize = 1
-    opt.serial_batches = True  # no shuffle
-    opt.no_flip = True  # no flip
+    opt.nThreads = 1
+    opt.batchSize = 1
+    opt.serial_batches = True
+    opt.no_flip = True
     opt.isTrain = False
     opt.phase = 'test'
     opt.no_dropout = True
     seg_output_dir = opt.test_seg_output_dir
 
+    # Load test images
     test_img_list_file = opt.test_img_list_file
     opt.imglist_testB = sublist.dir2list(opt.test_B_dir, test_img_list_file)
 
@@ -104,10 +105,20 @@ if TrainOrTest == 'TestSeg':
     dataset_size = len(data_loader)
     model = create_model(opt)
     visualizer = Visualizer(opt)
+
+    # Modified testing loop
     for i, data in enumerate(dataset):
         model.set_input(data)
         model.test()
         visuals = model.get_current_visuals()
         img_path = model.get_image_paths()
+        
         print('processing image... %s' % img_path)
-        visualizer.save_seg_images_to_dir(seg_output_dir, visuals, img_path)
+        
+        # Save only prediction results
+        save_visuals = {
+            'real_B': visuals['real_B'],         # original image
+            'real_B_seg': visuals['real_B_seg']  # predicted segmentation
+        }
+        
+        visualizer.save_seg_images_to_dir(seg_output_dir, save_visuals, img_path)
